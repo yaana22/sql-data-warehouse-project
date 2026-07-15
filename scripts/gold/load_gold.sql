@@ -9,6 +9,7 @@ Load Gold Layer
 -- ===========================================
 
 CREATE OR REPLACE VIEW gold.dim_customers AS
+
 SELECT
     ROW_NUMBER() OVER (ORDER BY c.cst_id) AS customer_key,
     c.cst_id AS customer_id,
@@ -19,9 +20,12 @@ SELECT
     c.cst_gender AS gender,
     e.bdate AS birth_date,
     l.cntry AS country
+
 FROM silver.crm_cust_info c
+
 LEFT JOIN silver.erp_cust_az12 e
     ON c.cst_key = e.cid
+
 LEFT JOIN silver.erp_loc_a101 l
     ON c.cst_key = l.cid;
 
@@ -29,35 +33,63 @@ LEFT JOIN silver.erp_loc_a101 l
 -- Product Dimension
 -- ===========================================
 
-CREATE OR REPLACE VIEW gold.dim_products AS
+DROP VIEW IF EXISTS gold.fact_sales;
+DROP VIEW IF EXISTS gold.dim_products;
+
+CREATE VIEW gold.dim_products AS
+
 SELECT
-    ROW_NUMBER() OVER (ORDER BY prd_id) AS product_key,
-    prd_id AS product_id,
-    prd_key AS product_number,
-    prd_nm AS product_name,
-    prd_cost AS cost,
-    prd_line AS product_line,
-    prd_start_dt AS start_date
-FROM silver.crm_prd_info
-WHERE prd_end_dt IS NULL;
+    ROW_NUMBER() OVER (ORDER BY p.prd_id) AS product_key,
+
+    p.prd_id AS product_id,
+    p.prd_key AS product_number,
+    p.prd_nm AS product_name,
+
+    c.cat,
+    c.subcat,
+    c.maintenance,
+
+    p.prd_cost AS cost,
+    p.prd_line AS product_line,
+    p.prd_start_dt AS start_date
+
+FROM silver.crm_prd_info p
+
+LEFT JOIN silver.erp_px_cat_g1v2 c
+ON REPLACE(SUBSTRING(p.prd_key,1,5),'-','_') = c.id
+
+WHERE p.prd_end_dt IS NULL;
 
 -- ===========================================
 -- Sales Fact
 -- ===========================================
 
-CREATE OR REPLACE VIEW gold.fact_sales AS
+CREATE VIEW gold.fact_sales AS
+
 SELECT
+
     s.sls_ord_num AS order_number,
+
     c.customer_key,
+
     p.product_key,
+
     s.sls_order_dt AS order_date,
+
     s.sls_ship_dt AS shipping_date,
+
     s.sls_due_dt AS due_date,
+
     s.sls_sales AS sales_amount,
+
     s.sls_quantity AS quantity,
+
     s.sls_price AS price
+
 FROM silver.crm_sales_details s
+
 LEFT JOIN gold.dim_customers c
-    ON s.sls_cust_id = c.customer_id
+ON s.sls_cust_id = c.customer_id
+
 LEFT JOIN gold.dim_products p
-    ON s.sls_prd_key = p.product_number;
+ON s.sls_prd_key = p.product_number;
