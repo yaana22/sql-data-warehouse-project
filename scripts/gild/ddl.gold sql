@@ -1,0 +1,8 @@
+/*
+===========================================================
+DDL Script : Gold Layer
+Purpose    : Create Gold Schema
+===========================================================
+*/
+
+CREATE SCHEMA IF NOT EXISTS gold;
